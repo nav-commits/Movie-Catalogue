@@ -12,17 +12,14 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function AppNavigator() {
   return (
-    <Stack.Navigator initialRouteName="MovieList">
-      <Stack.Screen
-        name="MovieList"
-        component={MovieListScreen}
-        options={{ title: "Popular Movies" }}
-      />
-      <Stack.Screen
-        name="MovieDetail"
-        component={MovieDetailScreen}
-        options={{ title: "Movie Details" }}
-      />
+    <Stack.Navigator
+      initialRouteName="MovieList"
+      screenOptions={{
+        headerShown: false, 
+      }}
+    >
+      <Stack.Screen name="MovieList" component={MovieListScreen} />
+      <Stack.Screen name="MovieDetail" component={MovieDetailScreen} />
     </Stack.Navigator>
   );
 }
