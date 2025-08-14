@@ -1,10 +1,20 @@
 import axios from "axios";
 import { TMDB_API_KEY } from "@env";
 
-// Create a single Axios instance for the TMDB API
 const tmdbApi = axios.create({
   baseURL: "https://api.themoviedb.org/3",
 });
+
+// --- API Response Interfaces ---
+
+export interface Genre {
+  id: number;
+  name: string;
+}
+
+export interface GenresResponse {
+  genres: Genre[];
+}
 
 export interface Movie {
   id: number;
@@ -13,6 +23,7 @@ export interface Movie {
   vote_average: number;
   release_date: string;
   overview: string;
+  genre_ids: number[];
 }
 
 export interface MoviesResponse {
@@ -25,16 +36,15 @@ export interface CastMember {
   character: string;
   profile_path: string | null;
 }
-
 export interface MovieCredits {
   id: number;
   cast: CastMember[];
-  crew: any[]; 
+  crew: any[];
 }
 
 // --- API Call Functions ---
 
-// Fetches a list of popular movies
+// Fetches a list of popular movies.
 export const fetchPopularMovies = async (): Promise<Movie[]> => {
   try {
     const response = await tmdbApi.get<MoviesResponse>("/movie/popular", {
@@ -43,11 +53,11 @@ export const fetchPopularMovies = async (): Promise<Movie[]> => {
     return response.data.results;
   } catch (error) {
     console.error("Error fetching popular movies:", error);
-    return []; // Return an empty array on error
+    return [];
   }
 };
 
-// Fetches a list of upcoming movies
+// Fetches a list of upcoming movies.
 export const fetchUpcomingMovies = async (): Promise<Movie[]> => {
   try {
     const response = await tmdbApi.get<MoviesResponse>("/movie/upcoming", {
@@ -56,11 +66,25 @@ export const fetchUpcomingMovies = async (): Promise<Movie[]> => {
     return response.data.results;
   } catch (error) {
     console.error("Error fetching upcoming movies:", error);
-    return []; // Return an empty array on error
+    return [];
   }
 };
 
-// Fetches detailed information for a single movie by its ID
+// Fetches the list of all movie genres.
+// This is the function that provides the genre names.
+export const fetchGenres = async (): Promise<Genre[]> => {
+  try {
+    const response = await tmdbApi.get<GenresResponse>("/genre/movie/list", {
+      params: { api_key: TMDB_API_KEY },
+    });
+    return response.data.genres;
+  } catch (error) {
+    console.error("Error fetching genres:", error);
+    return [];
+  }
+};
+
+// Fetches detailed information for a single movie by its ID.
 export const fetchMovieDetails = async (id: number): Promise<Movie> => {
   const response = await tmdbApi.get<Movie>(`/movie/${id}`, {
     params: { api_key: TMDB_API_KEY },
@@ -68,7 +92,7 @@ export const fetchMovieDetails = async (id: number): Promise<Movie> => {
   return response.data;
 };
 
-// Fetches the cast and crew for a specific movie by its ID
+// Fetches the cast and crew for a specific movie by its ID.
 export const fetchMovieCredits = async (movieId: number): Promise<MovieCredits> => {
   const response = await tmdbApi.get<MovieCredits>(`/movie/${movieId}/credits`, {
     params: { api_key: TMDB_API_KEY },

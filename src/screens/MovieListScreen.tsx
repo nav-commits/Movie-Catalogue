@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -10,31 +10,42 @@ import {
   Image,
   SafeAreaView,
   ScrollView,
+  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-// Import the new fetchUpcomingMovies function
-import { fetchPopularMovies, fetchUpcomingMovies, Movie } from "../api/tmdb";
+import { fetchPopularMovies, fetchUpcomingMovies, fetchGenres, Movie, Genre } from "../api/tmdb";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/appNavigator";
+import MovieCard from "../components/MovieCard"; 
 
 type Props = NativeStackScreenProps<RootStackParamList, "MovieList">;
+
+const { width: screenWidth } = Dimensions.get('window');
+const carouselItemWidth = screenWidth * 0.6;
+const horizontalPadding = (screenWidth - carouselItemWidth) / 2;
 
 export default function MovieListScreen({ navigation }: Props) {
   const [popularMovies, setPopularMovies] = useState<Movie[]>([]);
   const [upcomingMovies, setUpcomingMovies] = useState<Movie[]>([]);
+  const [genreMap, setGenreMap] = useState<Map<number, string>>(new Map());
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [popularData, upcomingData] = await Promise.all([
+        const [popularData, upcomingData, genreData] = await Promise.all([
           fetchPopularMovies(),
           fetchUpcomingMovies(),
+          fetchGenres(),
         ]);
         setPopularMovies(popularData);
         setUpcomingMovies(upcomingData);
+        const map = new Map<number, string>();
+        genreData.forEach(genre => map.set(genre.id, genre.name));
+        setGenreMap(map);
       } catch (err) {
         console.error("Failed to fetch movies:", err);
         setError("Failed to load movies.");
@@ -42,9 +53,27 @@ export default function MovieListScreen({ navigation }: Props) {
         setLoading(false);
       }
     };
-
     fetchData();
   }, []);
+
+  const getGenreString = (genreIds: number[]): string => {
+    if (!genreIds || genreIds.length === 0) {
+      return "Genre info not available";
+    }
+    const genres = genreIds.map(id => genreMap.get(id)).filter(Boolean);
+    return genres.join(", ");
+  };
+
+  // Replaced onScroll with onViewableItemsChanged for more reliable active index tracking
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: any[] }) => {
+    if (viewableItems.length > 0) {
+      setActiveIndex(viewableItems[0].index || 0);
+    }
+  }).current;
+
+  const viewabilityConfig = {
+    itemVisiblePercentThreshold: 50, 
+  };
 
   if (loading) {
     return (
@@ -61,6 +90,18 @@ export default function MovieListScreen({ navigation }: Props) {
       </View>
     );
   }
+
+  const totalDots = 5;
+  const popularMovieCount = popularMovies.length;
+  let paginationStartIndex = 0;
+  if (popularMovieCount > totalDots) {
+    if (activeIndex > 2 && activeIndex < popularMovieCount - 2) {
+      paginationStartIndex = activeIndex - 2;
+    } else if (activeIndex >= popularMovieCount - 2) {
+      paginationStartIndex = popularMovieCount - totalDots;
+    }
+  }
+  const paginationDots = popularMovies.slice(paginationStartIndex, paginationStartIndex + totalDots);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -98,32 +139,68 @@ export default function MovieListScreen({ navigation }: Props) {
         </View>
         <FlatList
           horizontal
+          pagingEnabled
           data={popularMovies}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              onPress={() => navigation.navigate("MovieDetail", { movieId: item.id })}
-              style={styles.nowPlayingCard}
-            >
-              <Image
-                source={{
-                  uri: `https://image.tmdb.org/t/p/w500${item.poster_path}`,
-                }}
-                style={styles.nowPlayingImage}
-              />
-              <View style={styles.nowPlayingTextOverlay}>
-                <Text style={styles.nowPlayingTitle} numberOfLines={1}>
-                  {item.title}
-                </Text>
-                <Text style={styles.nowPlayingSubtitle}>
-                  Genre info not available
-                </Text>
-              </View>
-            </TouchableOpacity>
+          renderItem={({ item, index }) => (
+            // A container to hold both the movie card and its details
+            <View style={styles.nowPlayingItemContainer}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate("MovieDetail", { movieId: item.id })}
+                style={[
+                  styles.nowPlayingCard,
+                  {
+                    // Apply a scale, rotate, and translateY transform
+                    transform: [
+                      { scale: index === activeIndex ? 1 : 0.85 },
+                      { rotate: index < activeIndex ? '-10deg' : index > activeIndex ? '10deg' : '0deg' },
+                      { translateY: index === activeIndex ? 0 : 50 }, 
+                    ],
+                  }
+                ]}
+              >
+                <Image
+                  source={{
+                    uri: `https://image.tmdb.org/t/p/w500${item.poster_path}`,
+                  }}
+                  style={styles.nowPlayingImage}
+                />
+              </TouchableOpacity>
+              {index === activeIndex && (
+                <View style={styles.nowPlayingDetails}>
+                  <Text style={styles.nowPlayingTitle} numberOfLines={1}>
+                    {item.title}
+                  </Text>
+                  <Text style={styles.nowPlayingSubtitle} numberOfLines={1}>
+                    {getGenreString(item.genre_ids)}
+                  </Text>
+                </View>
+              )}
+            </View>
           )}
           keyExtractor={(item) => item.id.toString()}
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.nowPlayingList}
+          contentContainerStyle={[
+            styles.nowPlayingList,
+            // Use horizontal padding to center the list items
+            { paddingHorizontal: horizontalPadding }
+          ]}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
+          snapToInterval={carouselItemWidth + 20}
+          decelerationRate="fast"
         />
+        {/* Pagination Dots */}
+        <View style={styles.paginationContainer}>
+          {paginationDots.map((_, index) => (
+            <View
+              key={index + paginationStartIndex}
+              style={[
+                styles.paginationDot,
+                index + paginationStartIndex === activeIndex && styles.activePaginationDot,
+              ]}
+            />
+          ))}
+        </View>
 
         {/* Coming Soon Section */}
         <View style={styles.sectionHeader}>
@@ -134,27 +211,13 @@ export default function MovieListScreen({ navigation }: Props) {
         </View>
         <FlatList
           horizontal
-          data={upcomingMovies} // Now using the data from the API call
+          data={upcomingMovies}
           renderItem={({ item }) => (
-            <TouchableOpacity
+            <MovieCard
+              movie={item}
               onPress={() => navigation.navigate("MovieDetail", { movieId: item.id })}
-              style={styles.comingSoonCard}
-            >
-              <Image
-                source={{
-                  uri: `https://image.tmdb.org/t/p/w500${item.poster_path}`,
-                }}
-                style={styles.comingSoonImage}
-              />
-              <View style={styles.comingSoonDetails}>
-                <Text style={styles.comingSoonTitle} numberOfLines={1}>
-                  {item.title}
-                </Text>
-                <Text style={styles.comingSoonSubtitle}>
-                  Genre info not available
-                </Text>
-              </View>
-            </TouchableOpacity>
+              horizontal={true}
+            />
           )}
           keyExtractor={(item) => item.id.toString()}
           showsHorizontalScrollIndicator={false}
@@ -188,7 +251,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginHorizontal: 20,
-    marginTop: 50,
+    marginTop: 60,
     marginBottom: 20,
   },
   welcomeText: {
@@ -204,9 +267,8 @@ const styles = StyleSheet.create({
   userImage: {
     width: 45,
     height: 45,
-    borderRadius: 22.5,
+    borderRadius: 10.5,
     borderWidth: 2,
-    borderColor: "#FFD700",
   },
   searchContainer: {
     flexDirection: "row",
@@ -244,72 +306,69 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   nowPlayingList: {
-    paddingHorizontal: 20,
-    marginBottom: 30,
+    // The paddingHorizontal is now dynamic and handled inline
+  },
+  nowPlayingItemContainer: {
+    alignItems: 'center', 
+    marginHorizontal: 10,
   },
   nowPlayingCard: {
-    width: 250,
-    height: 380,
-    marginRight: 15,
+    width: carouselItemWidth,
+    height: 300, 
     borderRadius: 20,
-    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 8,
   },
   nowPlayingImage: {
     width: "100%",
     height: "100%",
     borderRadius: 20,
   },
-  nowPlayingTextOverlay: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 20,
+  nowPlayingDetails: {
+    marginTop: 15, 
+    alignItems: 'center', 
+    width: carouselItemWidth,
   },
   nowPlayingTitle: {
     color: "#fff",
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "bold",
     textShadowColor: "rgba(0, 0, 0, 0.75)",
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 5,
+    textAlign: 'center',
   },
   nowPlayingSubtitle: {
-    color: "#ddd",
+    color: "#999", 
     fontSize: 14,
     textShadowColor: "rgba(0, 0, 0, 0.75)",
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 5,
+    textAlign: 'center',
+  },
+  paginationContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 30, 
+    marginBottom: 30,
+  },
+  paginationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginHorizontal: 4,
+    backgroundColor: "#999",
+  },
+  activePaginationDot: {
+    width: 16,
+    backgroundColor: "#FFD700",
   },
   comingSoonList: {
     paddingHorizontal: 20,
     marginBottom: 20,
-  },
-  comingSoonCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#222",
-    borderRadius: 15,
-    padding: 10,
-    marginRight: 15,
-  },
-  comingSoonImage: {
-    width: 80,
-    height: 120,
-    borderRadius: 10,
-    marginRight: 10,
-  },
-  comingSoonDetails: {
-    flex: 1,
-  },
-  comingSoonTitle: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  comingSoonSubtitle: {
-    color: "#999",
-    fontSize: 12,
-    marginTop: 4,
   },
 });

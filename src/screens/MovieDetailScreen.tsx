@@ -100,7 +100,7 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
                 <Text style={styles.directorName}>Jon Watts</Text>
               </View>
               <TouchableOpacity style={styles.trailerButton}>
-                <Ionicons name="play-circle" size={16} color="#000" />
+                <Ionicons name="play-circle" size={16} color="white" />
                 <Text style={styles.trailerButtonText}>Watch trailer</Text>
               </TouchableOpacity>
             </View>
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   heroImage: {
-    height: 500,
+    height: 250,
     justifyContent: "space-between",
     paddingTop: 10,
   },
@@ -199,11 +199,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   detailsCard: {
-    backgroundColor: "rgba(0,0,0,0.8)",
-    padding: 20,
+    backgroundColor: '#1a1a1a', 
+    padding: 30,
     marginHorizontal: 20,
     borderRadius: 20,
-    bottom: -150,
+    bottom: -50,
     position: 'absolute',
     width: '90%',
   },
@@ -235,22 +235,22 @@ const styles = StyleSheet.create({
   trailerButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFD700",
+    backgroundColor: '#1a1a1a', 
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 20,
   },
   trailerButtonText: {
-    color: "#000",
+    color: "white", 
     marginLeft: 5,
     fontWeight: "bold",
   },
   mainContent: {
-    marginTop: 150,
+    marginTop: 60,
   },
   section: {
     paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingVertical: 5,
   },
   sectionTitle: {
     color: "#fff",
