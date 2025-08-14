@@ -28,7 +28,7 @@ export default function MovieCard({ movie, onPress }: MovieCardProps) {
         />
       ) : (
         <View style={[styles.poster, styles.noImage]}>
-          <Text>No Image</Text>
+          <Text style={styles.noImageText}>No Image</Text>
         </View>
       )}
       <View style={styles.info}>
@@ -44,12 +44,12 @@ export default function MovieCard({ movie, onPress }: MovieCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#fff",
+    backgroundColor: "#1a1a1a", // dark card background
     borderRadius: 10,
     margin: 5,
     width: CARD_WIDTH,
     shadowColor: "#000",
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.3,
     shadowOffset: { width: 0, height: 3 },
     shadowRadius: 5,
     elevation: 3,
@@ -62,7 +62,10 @@ const styles = StyleSheet.create({
   noImage: {
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#ccc",
+    backgroundColor: "#333", 
+  },
+  noImageText: {
+    color: "#ccc",
   },
   info: {
     padding: 8,
@@ -70,10 +73,11 @@ const styles = StyleSheet.create({
   title: {
     fontWeight: "bold",
     fontSize: 16,
+    color: "#fff", 
   },
   subtitle: {
     fontSize: 12,
-    color: "#666",
+    color: "#aaa", 
     marginTop: 4,
   },
 });
