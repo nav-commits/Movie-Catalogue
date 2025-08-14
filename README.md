@@ -51,4 +51,6 @@ Popular movies endpoint:
 git clone https://github.com/nav-commits/Movie-Catalogue.git
 npm install
 npm start
+press a for android
+press i for ios
 
